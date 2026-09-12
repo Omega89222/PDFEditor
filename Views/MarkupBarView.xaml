@@ -1,0 +1,192 @@
+<UserControl x:Class="PDFEditor.Views.MarkupBarView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ctrl="clr-namespace:PDFEditor.Controls"
+             xmlns:conv="clr-namespace:PDFEditor.Converters"
+             x:Name="Root"
+             Height="44"
+             Focusable="False"
+             Background="{DynamicResource MarkupBarBg}"
+             FontFamily="{DynamicResource UiFont}">
+
+    <UserControl.Resources>
+        <conv:EnumEqualsConverter x:Key="EnumEquals"/>
+        <conv:NumberConverter x:Key="Number"/>
+        <conv:PercentConverter x:Key="Percent"/>
+
+        <!-- Petit chevron des boutons scindes -->
+        <Style x:Key="SplitChevron" TargetType="Button" BasedOn="{StaticResource ToolbarIconButton}">
+            <Setter Property="Width" Value="13"/>
+            <Setter Property="Margin" Value="-1,0,3,0"/>
+            <Setter Property="ctrl:IconHost.Size" Value="7"/>
+            <Setter Property="ctrl:IconHost.Geometry" Value="{StaticResource Icon.ChevronDown}"/>
+        </Style>
+
+        <!-- Carte de palette (popover) -->
+        <Style x:Key="PopoverCard" TargetType="Border">
+            <Setter Property="Margin" Value="14,6,14,20"/>
+            <Setter Property="Padding" Value="14,12"/>
+            <Setter Property="CornerRadius" Value="12"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Background" Value="{DynamicResource PopoverBg}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource PopoverBorderBrush}"/>
+            <Setter Property="Effect" Value="{DynamicResource PopoverShadow}"/>
+        </Style>
+
+        <!-- Nom de police affiche dans sa propre police -->
+        <DataTemplate x:Key="FontItemTemplate">
+            <TextBlock Text="{Binding}" FontFamily="{Binding}" FontSize="13"/>
+        </DataTemplate>
+    </UserControl.Resources>
+
+    <Grid>
+        <Rectangle Height="1" VerticalAlignment="Bottom" Fill="{DynamicResource SeparatorBrush}"/>
+
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+
+            <!-- Selection et navigation -->
+            <ToggleButton x:Name="SelectTool" Style="{StaticResource MarkupToolToggle}" ctrl:IconHost.Geometry="{StaticResource Icon.Cursor}" ToolTip="Sélection (V)" Tag="Select" Click="OnToolClick"/>
+            <ToggleButton x:Name="HandTool" Style="{StaticResource MarkupToolToggle}" ctrl:IconHost.Geometry="{StaticResource Icon.Hand}" ToolTip="Main (H)" Tag="Hand" Click="OnToolClick"/>
+            <ToggleButton x:Name="MarqueeTool" Style="{StaticResource MarkupToolToggle}" ctrl:IconHost.Geometry="{StaticResource Icon.Marquee}" ToolTip="Sélection rectangulaire : copier, recadrer, masquer (M)" Tag="Marquee" Click="OnToolClick"/>
+
+            <Border Style="{StaticResource ToolbarDivider}"/>
+
+            <!-- Texte -->
+            <ToggleButton x:Name="TextMarkupTool" Style="{StaticResource MarkupToolToggle}" ctrl:IconHost.Geometry="{StaticResource Icon.TextHighlight}" ToolTip="Surligner le texte (U)" Tag="TextHighlight" Click="OnToolClick"/>
+            <Button x:Name="TextMarkupMenuButton" Style="{StaticResource SplitChevron}" ToolTip="Surligner, souligner, barrer" Click="OnTextMarkupMenuClick"/>
+            <ToggleButton x:Name="EditTextTool" Style="{StaticResource MarkupToolToggle}" ctrl:IconHost.Geometry="{StaticResource Icon.EditText}" ToolTip="Modifier le texte existant (E)" Tag="EditText" Click="OnToolClick"/>
+            <ToggleButton x:Name="TextBoxTool" Style="{StaticResource MarkupToolToggle}" ctrl:IconHost.Geometry="{StaticResource Icon.TextBox}" ToolTip="Zone de texte (T)" Tag="TextBox" Click="OnToolClick"/>
+
+            <Border Style="{StaticResource ToolbarDivider}"/>
+
+            <!-- Dessin et formes -->
+            <ToggleButton x:Name="PenTool" Style="{StaticResource MarkupToolToggle}" ctrl:IconHost.Geometry="{StaticResource Icon.Markup}" ToolTip="Stylo (P)" Tag="Pen" Click="OnToolClick"/>
+            <ToggleButton x:Name="HighlighterTool" Style="{StaticResource MarkupToolToggle}" ctrl:IconHost.Geometry="{StaticResource Icon.Highlight}" ToolTip="Surligneur (G)" Tag="Highlighter" Click="OnToolClick"/>
+            <ToggleButton x:Name="ShapeTool" Style="{StaticResource MarkupToolToggle}" ctrl:IconHost.Geometry="{StaticResource Icon.Rectangle}" ToolTip="Formes (R, O, L, A)" Tag="Rectangle" Click="OnToolClick"/>
+            <Button x:Name="ShapeMenuButton" Style="{StaticResource SplitChevron}" ToolTip="Choisir une forme" Click="OnShapeMenuClick"/>
+
+            <Border Style="{StaticResource ToolbarDivider}"/>
+
+            <!-- Commentaires et contenus -->
+            <ToggleButton x:Name="NoteTool" Style="{StaticResource MarkupToolToggle}" ctrl:IconHost.Geometry="{StaticResource Icon.Note}" ToolTip="Note (N)" Tag="Note" Click="OnToolClick"/>
+            <ToggleButton x:Name="StampTool" Style="{StaticResource MarkupToolToggle}" ctrl:IconHost.Geometry="{StaticResource Icon.Stamp}" ToolTip="Tampon" Tag="Stamp" Click="OnToolClick"/>
+            <Button x:Name="StampMenuButton" Style="{StaticResource SplitChevron}" ToolTip="Choisir un tampon" Click="OnStampMenuClick"/>
+            <ToggleButton x:Name="SignatureTool" Style="{StaticResource MarkupToolToggle}" ctrl:IconHost.Geometry="{StaticResource Icon.Signature}" ToolTip="Signature (S)" Tag="Signature" Click="OnToolClick"/>
+            <Button x:Name="SignatureMenuButton" Style="{StaticResource SplitChevron}" ToolTip="Mes signatures" Click="OnSignatureMenuClick"/>
+            <Button Style="{StaticResource ToolbarIconButton}" ctrl:IconHost.Geometry="{StaticResource Icon.Photo}" ctrl:IconHost.Size="16" ToolTip="Insérer une image (I)" Command="{Binding InsertImageCommand}"/>
+            <ToggleButton x:Name="LinkTool" Style="{StaticResource MarkupToolToggle}" ctrl:IconHost.Geometry="{StaticResource Icon.Link}" ToolTip="Lien (K)" Tag="Link" Click="OnToolClick"/>
+
+            <Border Style="{StaticResource ToolbarDivider}"/>
+
+            <!-- Masquage -->
+            <ToggleButton x:Name="WhiteoutTool" Style="{StaticResource MarkupToolToggle}" ctrl:IconHost.Geometry="{StaticResource Icon.Whiteout}" ToolTip="Correcteur : masquer une zone (W)" Tag="Whiteout" Click="OnToolClick"/>
+            <ToggleButton x:Name="RedactTool" Style="{StaticResource MarkupToolToggle}" ctrl:IconHost.Geometry="{StaticResource Icon.Redact}" ToolTip="Caviarder : supprimer définitivement le contenu (X)" Tag="Redact" Click="OnToolClick"/>
+
+            <Border Style="{StaticResource ToolbarDivider}"/>
+
+            <!-- Style -->
+            <Button x:Name="StrokeColorButton" Style="{StaticResource ToolbarIconButton}" ToolTip="Couleur" Click="OnStrokeColorClick">
+                <Grid Width="18" Height="18">
+                    <Ellipse x:Name="StrokeSwatch" Stroke="#33000000" StrokeThickness="1"/>
+                </Grid>
+            </Button>
+            <Button x:Name="FillColorButton" Style="{StaticResource ToolbarIconButton}" ToolTip="Remplissage" Click="OnFillColorClick">
+                <Grid Width="17" Height="17">
+                    <Border x:Name="FillSwatch" CornerRadius="4" BorderBrush="#40000000" BorderThickness="1" Background="White"/>
+                    <Line x:Name="FillSlash" X1="2" Y1="15" X2="15" Y2="2" Stroke="#FFFF3B30" StrokeThickness="1.6"/>
+                </Grid>
+            </Button>
+            <Button x:Name="WidthButton" Style="{StaticResource ToolbarIconButton}" ctrl:IconHost.Geometry="{StaticResource Icon.LineWidth}" ctrl:IconHost.Size="16" ToolTip="Épaisseur, opacité et pointillés" Click="OnWidthClick"/>
+            <Button x:Name="FontButton" Style="{StaticResource ToolbarIconButton}" ctrl:IconHost.Geometry="{StaticResource Icon.Aa}" ToolTip="Police du texte" Click="OnFontClick"/>
+        </StackPanel>
+
+        <!-- ============================================================
+             Palette « Trait »
+             ============================================================ -->
+        <Popup x:Name="WidthPopup"
+               PlacementTarget="{Binding ElementName=WidthButton}"
+               Placement="Bottom"
+               HorizontalOffset="-110"
+               StaysOpen="False"
+               AllowsTransparency="True"
+               PopupAnimation="Fade">
+            <Border Style="{StaticResource PopoverCard}" Width="250">
+                <StackPanel>
+                    <TextBlock Text="ÉPAISSEUR" Style="{StaticResource SectionHeader}"/>
+                    <UniformGrid x:Name="WidthPresets" Rows="1" Margin="0,0,0,8"/>
+                    <DockPanel>
+                        <TextBlock DockPanel.Dock="Right" Width="44" TextAlignment="Right" VerticalAlignment="Center"
+                                   Foreground="{DynamicResource TextSecondary}"
+                                   Text="{Binding Document.StyleStrokeWidth, Converter={StaticResource Number}, ConverterParameter=1, StringFormat={}{0} pt}"/>
+                        <Slider Style="{StaticResource MacSlider}" Minimum="0.5" Maximum="24" SmallChange="0.5" LargeChange="2"
+                                Value="{Binding Document.StyleStrokeWidth}"/>
+                    </DockPanel>
+
+                    <TextBlock Text="OPACITÉ" Style="{StaticResource SectionHeader}" Margin="0,12,0,6"/>
+                    <DockPanel>
+                        <TextBlock DockPanel.Dock="Right" Width="44" TextAlignment="Right" VerticalAlignment="Center"
+                                   Foreground="{DynamicResource TextSecondary}"
+                                   Text="{Binding Document.StyleOpacity, Converter={StaticResource Percent}}"/>
+                        <Slider Style="{StaticResource MacSlider}" Minimum="0.05" Maximum="1" SmallChange="0.05" LargeChange="0.1"
+                                Value="{Binding Document.StyleOpacity}"/>
+                    </DockPanel>
+
+                    <ToggleButton Style="{StaticResource MacSwitch}" Content="Pointillés" Margin="0,14,0,0"
+                                  IsChecked="{Binding Document.StyleDashed}"/>
+                </StackPanel>
+            </Border>
+        </Popup>
+
+        <!-- ============================================================
+             Palette « Police »
+             ============================================================ -->
+        <Popup x:Name="FontPopup"
+               PlacementTarget="{Binding ElementName=FontButton}"
+               Placement="Bottom"
+               HorizontalOffset="-130"
+               StaysOpen="False"
+               AllowsTransparency="True"
+               PopupAnimation="Fade">
+            <Border Style="{StaticResource PopoverCard}" Width="280">
+                <StackPanel>
+                    <TextBlock Text="POLICE" Style="{StaticResource SectionHeader}"/>
+                    <ComboBox Style="{StaticResource MacComboBox}"
+                              ItemsSource="{Binding FontFamilies}"
+                              ItemTemplate="{StaticResource FontItemTemplate}"
+                              SelectedItem="{Binding Document.StyleFontFamily}"/>
+
+                    <DockPanel Margin="0,10,0,0">
+                        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                            <ToggleButton Style="{StaticResource PopoverSegmentButton}" ctrl:IconHost.Geometry="{StaticResource Icon.Bold}" Margin="3,0,0,0" ToolTip="Gras" IsChecked="{Binding Document.StyleBold}"/>
+                            <ToggleButton Style="{StaticResource PopoverSegmentButton}" ctrl:IconHost.Geometry="{StaticResource Icon.Italic}" Margin="3,0,0,0" ToolTip="Italique" IsChecked="{Binding Document.StyleItalic}"/>
+                            <ToggleButton Style="{StaticResource PopoverSegmentButton}" ctrl:IconHost.Geometry="{StaticResource Icon.Underline}" Margin="3,0,0,0" ToolTip="Souligné" IsChecked="{Binding Document.StyleUnderline}"/>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal">
+                            <Button Style="{StaticResource PopoverSegmentButtonPlain}" Content="A−" Click="OnFontSmaller" ToolTip="Plus petit"/>
+                            <TextBox x:Name="FontSizeBox" Style="{StaticResource MacTextBox}" Width="48" Height="26" Margin="4,0" FontSize="12"
+                                     HorizontalContentAlignment="Center"
+                                     Text="{Binding Document.StyleFontSize, Converter={StaticResource Number}, ConverterParameter=1, UpdateSourceTrigger=LostFocus}"/>
+                            <Button Style="{StaticResource PopoverSegmentButtonPlain}" Content="A+" Click="OnFontLarger" ToolTip="Plus grand"/>
+                        </StackPanel>
+                    </DockPanel>
+
+                    <Border Style="{StaticResource SegmentTrack}" Margin="0,10,0,0">
+                        <UniformGrid Rows="1">
+                            <RadioButton Style="{StaticResource SegmentRadio}" GroupName="FontAlign" ctrl:IconHost.Geometry="{StaticResource Icon.AlignLeft}" ToolTip="Aligner à gauche"
+                                         IsChecked="{Binding Document.StyleAlignment, Converter={StaticResource EnumEquals}, ConverterParameter=Left}"/>
+                            <RadioButton Style="{StaticResource SegmentRadio}" GroupName="FontAlign" ctrl:IconHost.Geometry="{StaticResource Icon.AlignCenter}" ToolTip="Centrer"
+                                         IsChecked="{Binding Document.StyleAlignment, Converter={StaticResource EnumEquals}, ConverterParameter=Center}"/>
+                            <RadioButton Style="{StaticResource SegmentRadio}" GroupName="FontAlign" ctrl:IconHost.Geometry="{StaticResource Icon.AlignRight}" ToolTip="Aligner à droite"
+                                         IsChecked="{Binding Document.StyleAlignment, Converter={StaticResource EnumEquals}, ConverterParameter=Right}"/>
+                        </UniformGrid>
+                    </Border>
+
+                    <DockPanel Margin="0,12,0,0">
+                        <TextBlock Text="Couleur du texte" Style="{StaticResource FieldLabel}"/>
+                        <ctrl:ColorPickerButton HorizontalAlignment="Right" SelectedColor="{Binding Document.StyleTextColor}"/>
+                    </DockPanel>
+                </StackPanel>
+            </Border>
+        </Popup>
+    </Grid>
+</UserControl>

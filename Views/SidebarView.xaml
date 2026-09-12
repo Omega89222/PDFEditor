@@ -1,0 +1,295 @@
+<UserControl x:Class="PDFEditor.Views.SidebarView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ctrl="clr-namespace:PDFEditor.Controls"
+             xmlns:conv="clr-namespace:PDFEditor.Converters"
+             xmlns:views="clr-namespace:PDFEditor.Views"
+             xmlns:vm="clr-namespace:PDFEditor.ViewModels"
+             x:Name="Root"
+             Focusable="False"
+             FontFamily="{DynamicResource UiFont}"
+             Background="{DynamicResource SidebarBg}">
+
+    <UserControl.Resources>
+        <conv:EnumEqualsConverter x:Key="EnumEquals"/>
+        <conv:EnumToVisibilityConverter x:Key="EnumToVisibility"/>
+        <conv:BoolToVisibilityConverter x:Key="BoolToVisibility"/>
+        <conv:BoolToVisibilityConverter x:Key="BoolToVisibilityInverse" Invert="True"/>
+        <conv:CountToVisibilityConverter x:Key="CountToVisibilityInverse" Invert="True"/>
+        <conv:NullToVisibilityConverter x:Key="NullToVisibility"/>
+        <conv:IconKeyToGeometryConverter x:Key="IconKeyToGeometry"/>
+        <conv:ColorToBrushConverter x:Key="ColorToBrush"/>
+
+        <!-- Conteneur de vignette : cadre de selection arrondi -->
+        <Style x:Key="ThumbnailItem" TargetType="ListBoxItem">
+            <Setter Property="IsSelected" Value="{Binding IsSelected, Mode=TwoWay}"/>
+            <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ListBoxItem">
+                        <Border x:Name="Bd"
+                                Background="Transparent"
+                                CornerRadius="9"
+                                Margin="10,2"
+                                Padding="8,9,8,6"
+                                SnapsToDevicePixels="True">
+                            <ContentPresenter HorizontalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource HoverBg}"/>
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource SidebarSelectionBg}"/>
+                            </Trigger>
+                            <MultiDataTrigger>
+                                <MultiDataTrigger.Conditions>
+                                    <Condition Binding="{Binding IsSelected, RelativeSource={RelativeSource Self}}" Value="True"/>
+                                    <Condition Binding="{Binding IsActive, RelativeSource={RelativeSource AncestorType={x:Type Window}}}" Value="False"/>
+                                </MultiDataTrigger.Conditions>
+                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource SidebarSelectionInactiveBg}"/>
+                            </MultiDataTrigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <DataTemplate x:Key="ThumbnailTemplate" DataType="{x:Type vm:PageViewModel}">
+            <StackPanel>
+                <Grid>
+                    <views:PageThumbnail Page="{Binding}"
+                                         ThumbnailWidth="118"
+                                         Document="{Binding DataContext.Document, RelativeSource={RelativeSource AncestorType={x:Type UserControl}}}"/>
+                    <Ellipse Width="8" Height="8"
+                             HorizontalAlignment="Right" VerticalAlignment="Top"
+                             Margin="0,5,5,0"
+                             Fill="{DynamicResource AccentYellow}"
+                             Stroke="White" StrokeThickness="1"
+                             ToolTip="Page annotée"
+                             Visibility="{Binding HasAnnotations, Converter={StaticResource BoolToVisibility}}"/>
+                </Grid>
+                <TextBlock Text="{Binding Label}"
+                           HorizontalAlignment="Center"
+                           Margin="0,6,0,0"
+                           FontSize="11"
+                           Foreground="{DynamicResource TextSecondary}"/>
+            </StackPanel>
+        </DataTemplate>
+
+        <Style x:Key="EmptyStateText" TargetType="TextBlock">
+            <Setter Property="Margin" Value="24,30,24,0"/>
+            <Setter Property="TextAlignment" Value="Center"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+            <Setter Property="FontSize" Value="12.5"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextTertiary}"/>
+            <Setter Property="VerticalAlignment" Value="Top"/>
+        </Style>
+    </UserControl.Resources>
+
+    <DockPanel>
+
+        <!-- ============================================================
+             Onglets : vignettes, signets, annotations, recherche
+             ============================================================ -->
+        <Border DockPanel.Dock="Top" Padding="12,2,12,10">
+            <Border Style="{StaticResource SegmentTrack}">
+                <UniformGrid Rows="1">
+                    <RadioButton Style="{StaticResource SegmentRadio}" GroupName="SidebarMode"
+                                 ctrl:IconHost.Geometry="{StaticResource Icon.Pages}" ToolTip="Vignettes"
+                                 IsChecked="{Binding SidebarMode, Converter={StaticResource EnumEquals}, ConverterParameter=Pages}"/>
+                    <RadioButton Style="{StaticResource SegmentRadio}" GroupName="SidebarMode"
+                                 ctrl:IconHost.Geometry="{StaticResource Icon.Bookmark}" ToolTip="Signets"
+                                 IsChecked="{Binding SidebarMode, Converter={StaticResource EnumEquals}, ConverterParameter=Outline}"/>
+                    <RadioButton Style="{StaticResource SegmentRadio}" GroupName="SidebarMode"
+                                 ctrl:IconHost.Geometry="{StaticResource Icon.Note}" ToolTip="Annotations"
+                                 IsChecked="{Binding SidebarMode, Converter={StaticResource EnumEquals}, ConverterParameter=Annotations}"/>
+                    <RadioButton Style="{StaticResource SegmentRadio}" GroupName="SidebarMode"
+                                 ctrl:IconHost.Geometry="{StaticResource Icon.Search}" ToolTip="Rechercher"
+                                 IsChecked="{Binding SidebarMode, Converter={StaticResource EnumEquals}, ConverterParameter=Search}"/>
+                </UniformGrid>
+            </Border>
+        </Border>
+
+        <Grid>
+
+            <!-- ======================== Vignettes ======================= -->
+            <Grid Visibility="{Binding SidebarMode, Converter={StaticResource EnumToVisibility}, ConverterParameter=Pages}">
+                <ListBox x:Name="PageList"
+                         Style="{StaticResource FlatListBox}"
+                         ItemsSource="{Binding Document.Pages}"
+                         ItemContainerStyle="{StaticResource ThumbnailItem}"
+                         ItemTemplate="{StaticResource ThumbnailTemplate}"
+                         SelectionMode="Extended"
+                         AllowDrop="True"
+                         Padding="0,0,0,18"/>
+                <Canvas IsHitTestVisible="False">
+                    <Border x:Name="DropIndicator"
+                            Height="3"
+                            CornerRadius="1.5"
+                            Visibility="Collapsed"
+                            Background="{DynamicResource AccentYellow}"/>
+                </Canvas>
+            </Grid>
+
+            <!-- ======================== Signets ========================= -->
+            <Grid Visibility="{Binding SidebarMode, Converter={StaticResource EnumToVisibility}, ConverterParameter=Outline}">
+                <TreeView x:Name="OutlineTree"
+                          Style="{StaticResource MacTreeView}"
+                          ItemsSource="{Binding Document.Outline}"
+                          Padding="8,0,8,16">
+                    <TreeView.ItemTemplate>
+                        <HierarchicalDataTemplate DataType="{x:Type vm:OutlineItemViewModel}" ItemsSource="{Binding Children}">
+                            <DockPanel>
+                                <TextBlock DockPanel.Dock="Right"
+                                           Text="{Binding PageLabel}"
+                                           Margin="8,0,0,0"
+                                           FontSize="11"
+                                           VerticalAlignment="Center"
+                                           Foreground="{DynamicResource TextTertiary}"/>
+                                <TextBlock Text="{Binding Title}"
+                                           FontSize="12.5"
+                                           TextTrimming="CharacterEllipsis"
+                                           Foreground="{DynamicResource TextPrimary}"/>
+                            </DockPanel>
+                        </HierarchicalDataTemplate>
+                    </TreeView.ItemTemplate>
+                </TreeView>
+                <TextBlock Style="{StaticResource EmptyStateText}"
+                           Text="Ce document ne contient pas de signets."
+                           Visibility="{Binding Document.HasOutline, Converter={StaticResource BoolToVisibilityInverse}, FallbackValue=Collapsed}"/>
+            </Grid>
+
+            <!-- ======================== Annotations ===================== -->
+            <DockPanel Visibility="{Binding SidebarMode, Converter={StaticResource EnumToVisibility}, ConverterParameter=Annotations}">
+                <TextBlock x:Name="AnnotationHeader"
+                           DockPanel.Dock="Top"
+                           Style="{StaticResource SectionHeader}"
+                           Margin="20,0,16,6"/>
+                <Grid>
+                    <ListBox x:Name="AnnotationList"
+                             Style="{StaticResource FlatListBox}"
+                             ItemsSource="{Binding Document.AnnotationItems}"
+                             ItemContainerStyle="{StaticResource MacListItem}"
+                             Padding="10,0,10,16">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate DataType="{x:Type vm:AnnotationListItem}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Path Data="{Binding IconKey, Converter={StaticResource IconKeyToGeometry}}"
+                                          Fill="{Binding AccentColor, Converter={StaticResource ColorToBrush}}"
+                                          Width="15" Height="15"
+                                          Stretch="Uniform"
+                                          VerticalAlignment="Top"
+                                          Margin="0,2,10,0"/>
+                                    <StackPanel Grid.Column="1">
+                                        <DockPanel>
+                                            <TextBlock DockPanel.Dock="Right"
+                                                       Text="{Binding PageLabel}"
+                                                       FontSize="11"
+                                                       Margin="6,1,0,0"
+                                                       Foreground="{DynamicResource TextTertiary}"/>
+                                            <TextBlock Text="{Binding Title}"
+                                                       FontSize="12.5"
+                                                       FontWeight="SemiBold"
+                                                       TextTrimming="CharacterEllipsis"
+                                                       Foreground="{DynamicResource TextPrimary}"/>
+                                        </DockPanel>
+                                        <TextBlock Text="{Binding Detail}"
+                                                   FontSize="12"
+                                                   Margin="0,2,0,0"
+                                                   MaxHeight="34"
+                                                   TextWrapping="Wrap"
+                                                   TextTrimming="CharacterEllipsis"
+                                                   Foreground="{DynamicResource TextSecondary}"
+                                                   Visibility="{Binding Detail, Converter={StaticResource NullToVisibility}}"/>
+                                    </StackPanel>
+                                </Grid>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+
+                    <StackPanel Visibility="{Binding Document.AnnotationCount, Converter={StaticResource CountToVisibilityInverse}, FallbackValue=Collapsed}">
+                        <TextBlock Style="{StaticResource EmptyStateText}"
+                                   Text="Aucune annotation pour l’instant. Surlignez, écrivez, dessinez ou signez avec la barre d’annotation."/>
+                        <Button Content="Afficher la barre d’annotation"
+                                Style="{StaticResource MacLinkButton}"
+                                HorizontalAlignment="Center"
+                                Margin="0,10,0,0"
+                                Click="OnShowMarkupBarClick"/>
+                    </StackPanel>
+                </Grid>
+            </DockPanel>
+
+            <!-- ======================== Recherche ======================= -->
+            <DockPanel Visibility="{Binding SidebarMode, Converter={StaticResource EnumToVisibility}, ConverterParameter=Search}">
+                <StackPanel DockPanel.Dock="Top" Margin="12,0,12,8">
+                    <TextBox x:Name="SidebarSearchBox"
+                             Style="{StaticResource MacSearchBox}"
+                             Tag="Rechercher dans le document"
+                             Text="{Binding Document.SearchQuery, UpdateSourceTrigger=PropertyChanged}"/>
+
+                    <WrapPanel Margin="2,9,0,0">
+                        <CheckBox x:Name="MatchCaseBox"
+                                  Style="{StaticResource MacCheckBox}"
+                                  Content="Respecter la casse"
+                                  FontSize="12"
+                                  Margin="0,0,14,4"
+                                  IsChecked="{Binding Document.SearchMatchCase}"/>
+                        <CheckBox x:Name="WholeWordBox"
+                                  Style="{StaticResource MacCheckBox}"
+                                  Content="Mot entier"
+                                  FontSize="12"
+                                  Margin="0,0,0,4"
+                                  IsChecked="{Binding Document.SearchWholeWord}"/>
+                    </WrapPanel>
+
+                    <DockPanel Margin="2,10,0,0">
+                        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                            <Button Style="{StaticResource HudIconButton}"
+                                    ctrl:IconHost.Geometry="{StaticResource Icon.ChevronUp}"
+                                    ToolTip="Résultat précédent (Maj+F3)"
+                                    Command="{Binding PreviousResultCommand}"/>
+                            <Button Style="{StaticResource HudIconButton}"
+                                    ctrl:IconHost.Geometry="{StaticResource Icon.ChevronDown}"
+                                    ToolTip="Résultat suivant (F3)"
+                                    Command="{Binding NextResultCommand}"/>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <TextBlock Text="{Binding Document.SearchStatus}"
+                                       FontSize="12"
+                                       FontWeight="SemiBold"
+                                       Foreground="{DynamicResource TextSecondary}"/>
+                            <TextBlock Text="{Binding Document.SearchPositionLabel}"
+                                       FontSize="12"
+                                       Margin="8,0,0,0"
+                                       Foreground="{DynamicResource TextTertiary}"/>
+                        </StackPanel>
+                    </DockPanel>
+                </StackPanel>
+
+                <ListBox x:Name="SearchList"
+                         Style="{StaticResource FlatListBox}"
+                         ItemsSource="{Binding Document.SearchResults}"
+                         ItemContainerStyle="{StaticResource MacListItem}"
+                         Padding="10,0,10,16">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate DataType="{x:Type vm:SearchResultViewModel}">
+                            <StackPanel>
+                                <TextBlock Text="{Binding PageLabel}"
+                                           FontSize="11"
+                                           FontWeight="SemiBold"
+                                           Foreground="{DynamicResource TextSecondary}"/>
+                                <TextBlock FontSize="12" Margin="0,2,0,0" TextWrapping="Wrap" MaxHeight="52" TextTrimming="CharacterEllipsis"><Run Text="{Binding Before, Mode=OneWay}" Foreground="{DynamicResource TextSecondary}"/><Run Text="{Binding Match, Mode=OneWay}" FontWeight="Bold" Foreground="{DynamicResource TextPrimary}" Background="{DynamicResource SearchHitBrush}"/><Run Text="{Binding After, Mode=OneWay}" Foreground="{DynamicResource TextSecondary}"/></TextBlock>
+                            </StackPanel>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </DockPanel>
+        </Grid>
+    </DockPanel>
+</UserControl>

@@ -1,0 +1,178 @@
+<UserControl x:Class="PDFEditor.Views.TitleBarView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ctrl="clr-namespace:PDFEditor.Controls"
+             xmlns:conv="clr-namespace:PDFEditor.Converters"
+             x:Name="Root"
+             Height="52"
+             Focusable="False"
+             FontFamily="{DynamicResource UiFont}">
+
+    <UserControl.Resources>
+        <conv:BoolToVisibilityConverter x:Key="BoolToVisibility"/>
+    </UserControl.Resources>
+
+    <!-- ================================================================
+         Deux zones alignees sur les colonnes de la fenetre : barre laterale
+         (feux tricolores) et zone principale (titre, outils, recherche).
+         Toute la surface libre deplace la fenetre.
+         ================================================================ -->
+    <Grid x:Name="RootGrid"
+          Background="Transparent"
+          MouseLeftButtonDown="OnBarMouseLeftButtonDown">
+
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition x:Name="SidebarColumn" Width="212"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+
+        <!-- ============================== Barre laterale ============== -->
+        <Border x:Name="SidebarPane" Grid.Column="0" Background="{DynamicResource SidebarBg}">
+            <Grid>
+                <ctrl:TrafficLights HorizontalAlignment="Left"
+                                    VerticalAlignment="Center"
+                                    Margin="20,0,0,0"/>
+
+                <StackPanel Orientation="Horizontal"
+                            HorizontalAlignment="Right"
+                            VerticalAlignment="Center"
+                            Margin="0,0,8,0">
+                    <Button Style="{StaticResource ToolbarIconButton}"
+                            ctrl:IconHost.Geometry="{StaticResource Icon.SidebarToggle}"
+                            ToolTip="Masquer la barre latérale (Ctrl+Alt+S)"
+                            Command="{Binding ToggleSidebarCommand}"/>
+                    <Button x:Name="InsertPageButton"
+                            Style="{StaticResource ToolbarIconButton}"
+                            ctrl:IconHost.Geometry="{StaticResource Icon.InsertPage}"
+                            ToolTip="Insérer des pages"
+                            Click="OnInsertPageClick"/>
+                </StackPanel>
+
+                <Rectangle Width="1" HorizontalAlignment="Right" Fill="{DynamicResource SeparatorBrush}"/>
+            </Grid>
+        </Border>
+
+        <!-- ============================== Zone principale ============= -->
+        <Border Grid.Column="1" Background="{DynamicResource WindowBg}">
+            <DockPanel LastChildFill="True" Margin="6,0,12,0">
+
+                <!-- Barre laterale masquee : feux et bascule reviennent ici. -->
+                <StackPanel x:Name="CollapsedSidebarTools"
+                            DockPanel.Dock="Left"
+                            Orientation="Horizontal"
+                            VerticalAlignment="Center"
+                            Visibility="Collapsed">
+                    <ctrl:TrafficLights Margin="14,0,14,0" VerticalAlignment="Center"/>
+                    <Button x:Name="ShowSidebarButton"
+                            Style="{StaticResource ToolbarIconButton}"
+                            ctrl:IconHost.Geometry="{StaticResource Icon.SidebarToggle}"
+                            ToolTip="Afficher la barre latérale (Ctrl+Alt+S)"
+                            Command="{Binding ToggleSidebarCommand}"/>
+                </StackPanel>
+
+                <!-- Titre du document -->
+                <StackPanel DockPanel.Dock="Left"
+                            VerticalAlignment="Center"
+                            Margin="10,0,16,0"
+                            MinWidth="110"
+                            MaxWidth="300">
+                    <TextBlock x:Name="TitleText"
+                               FontSize="13"
+                               FontWeight="SemiBold"
+                               Foreground="{DynamicResource TextPrimary}"
+                               TextTrimming="CharacterEllipsis"/>
+                    <TextBlock x:Name="SubtitleText"
+                               FontSize="11"
+                               Margin="0,1,0,0"
+                               Foreground="{DynamicResource TextSecondary}"
+                               TextTrimming="CharacterEllipsis"/>
+                </StackPanel>
+
+                <!-- Droite : exporter, plus, recherche, inspecteur -->
+                <StackPanel DockPanel.Dock="Right"
+                            Orientation="Horizontal"
+                            VerticalAlignment="Center">
+
+                    <Button x:Name="ShareButton"
+                            Style="{StaticResource ToolbarIconButton}"
+                            ctrl:IconHost.Geometry="{StaticResource Icon.Share}"
+                            ToolTip="Enregistrer, imprimer et exporter"
+                            Visibility="{Binding HasDocument, Converter={StaticResource BoolToVisibility}}"
+                            Click="OnShareClick"/>
+
+                    <Button x:Name="MoreButton"
+                            Style="{StaticResource ToolbarIconButton}"
+                            ctrl:IconHost.Geometry="{StaticResource Icon.More}"
+                            ToolTip="Plus d’actions"
+                            Click="OnMoreClick"/>
+
+                    <TextBox x:Name="SearchBox"
+                             Style="{StaticResource MacSearchBox}"
+                             Width="196"
+                             Margin="8,0,6,0"
+                             Tag="Rechercher"
+                             Visibility="{Binding HasDocument, Converter={StaticResource BoolToVisibility}}"
+                             Text="{Binding Document.SearchQuery, UpdateSourceTrigger=PropertyChanged}"/>
+
+                    <ToggleButton Style="{StaticResource ToolbarIconToggleButton}"
+                                  ctrl:IconHost.Geometry="{StaticResource Icon.InspectorToggle}"
+                                  ToolTip="Inspecteur (Ctrl+Alt+I)"
+                                  Visibility="{Binding HasDocument, Converter={StaticResource BoolToVisibility}}"
+                                  IsChecked="{Binding IsInspectorVisible}"/>
+                </StackPanel>
+
+                <!-- Outils du document, alignes a droite comme dans Apercu -->
+                <StackPanel x:Name="DocumentTools"
+                            Orientation="Horizontal"
+                            HorizontalAlignment="Right"
+                            VerticalAlignment="Center"
+                            Visibility="{Binding HasDocument, Converter={StaticResource BoolToVisibility}}">
+
+                    <Button Style="{StaticResource ToolbarIconButton}"
+                            ctrl:IconHost.Geometry="{StaticResource Icon.Undo}"
+                            ToolTip="Annuler (Ctrl+Z)"
+                            Command="{Binding UndoCommand}"/>
+                    <Button Style="{StaticResource ToolbarIconButton}"
+                            ctrl:IconHost.Geometry="{StaticResource Icon.Redo}"
+                            ToolTip="Rétablir (Ctrl+Y)"
+                            Command="{Binding RedoCommand}"/>
+
+                    <Border Style="{StaticResource ToolbarDivider}"/>
+
+                    <Button Style="{StaticResource ToolbarIconButton}"
+                            ctrl:IconHost.Geometry="{StaticResource Icon.ZoomOut}"
+                            ToolTip="Zoom arrière (Ctrl+−)"
+                            Command="{Binding ZoomOutCommand}"/>
+                    <Button x:Name="ZoomButton"
+                            Style="{StaticResource ToolbarPillButton}"
+                            MinWidth="70"
+                            ToolTip="Zoom et disposition des pages"
+                            Content="{Binding Document.ZoomLabel}"
+                            Click="OnZoomClick"/>
+                    <Button Style="{StaticResource ToolbarIconButton}"
+                            ctrl:IconHost.Geometry="{StaticResource Icon.ZoomIn}"
+                            ToolTip="Zoom avant (Ctrl++)"
+                            Command="{Binding ZoomInCommand}"/>
+
+                    <Border Style="{StaticResource ToolbarDivider}"/>
+
+                    <Button Style="{StaticResource ToolbarIconButton}"
+                            ctrl:IconHost.Geometry="{StaticResource Icon.RotateLeft}"
+                            ToolTip="Pivoter à gauche (Ctrl+L)"
+                            Command="{Binding RotateLeftCommand}"/>
+                    <Button Style="{StaticResource ToolbarIconButton}"
+                            ctrl:IconHost.Geometry="{StaticResource Icon.RotateRight}"
+                            ToolTip="Pivoter à droite (Ctrl+R)"
+                            Command="{Binding RotateRightCommand}"/>
+
+                    <Border Style="{StaticResource ToolbarDivider}"/>
+
+                    <ToggleButton Style="{StaticResource ToolbarIconToggleButton}"
+                                  ctrl:IconHost.Geometry="{StaticResource Icon.Markup}"
+                                  ToolTip="Barre d’annotation (Ctrl+Maj+A)"
+                                  IsChecked="{Binding IsMarkupBarVisible}"/>
+                </StackPanel>
+            </DockPanel>
+        </Border>
+    </Grid>
+</UserControl>
