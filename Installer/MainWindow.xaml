@@ -1,0 +1,160 @@
+<Window x:Class="PDFEditorSetup.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Installation d’Éditeur PDF"
+        Width="700" Height="480"
+        MinWidth="700" MaxWidth="700" MinHeight="480" MaxHeight="480"
+        WindowStyle="None"
+        ResizeMode="CanResize"
+        WindowStartupLocation="CenterScreen"
+        Background="{DynamicResource WindowBg}"
+        Foreground="{DynamicResource TextPrimary}"
+        FontFamily="{StaticResource UiFont}"
+        FontSize="13"
+        UseLayoutRounding="True"
+        SnapsToDevicePixels="True">
+
+    <!-- Fenetre sans chrome Windows ; la bordure systeme garde ombre et coins arrondis. -->
+    <WindowChrome.WindowChrome>
+        <WindowChrome CaptionHeight="0" GlassFrameThickness="0" ResizeBorderThickness="0" CornerRadius="0" UseAeroCaptionButtons="False"/>
+    </WindowChrome.WindowChrome>
+
+    <Grid x:Name="Root">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="210"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+
+        <!-- ======================= Barre laterale : etapes ======================= -->
+        <Border Grid.Column="0" Background="{DynamicResource SidebarBg}" MouseLeftButtonDown="OnDragWindow">
+            <Grid>
+                <StackPanel Orientation="Horizontal" Margin="16,16,0,0" HorizontalAlignment="Left" VerticalAlignment="Top">
+                    <Button x:Name="CloseButton" Style="{StaticResource TrafficLight}" Background="{DynamicResource TrafficRed}"
+                            Tag="M0,0 L5,5 M5,0 L0,5" Margin="0,0,8,0" ToolTip="Fermer" Click="OnCloseClick"/>
+                    <Button Style="{StaticResource TrafficLight}" Background="{DynamicResource TrafficYellow}"
+                            Tag="M0,0 L6,0" Margin="0,0,8,0" ToolTip="Réduire" Click="OnMinimizeClick"/>
+                    <Button Style="{StaticResource TrafficLight}" Background="{DynamicResource TrafficGreen}" IsEnabled="False"/>
+                </StackPanel>
+
+                <StackPanel Margin="24,64,16,0" VerticalAlignment="Top">
+                    <Image Source="icone.png" Width="72" Height="72" HorizontalAlignment="Left" Margin="-4,0,0,24"
+                           RenderOptions.BitmapScalingMode="HighQuality"/>
+                    <StackPanel x:Name="StepList"/>
+                </StackPanel>
+
+                <TextBlock x:Name="VersionText" Style="{StaticResource SecondaryText}" FontSize="11.5"
+                           VerticalAlignment="Bottom" Margin="24,0,16,18"/>
+            </Grid>
+        </Border>
+        <Rectangle Grid.Column="0" Width="1" HorizontalAlignment="Right" Fill="{DynamicResource SeparatorBrush}"/>
+
+        <!-- ======================= Contenu ======================= -->
+        <Grid Grid.Column="1" Margin="30,16,28,24">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <Border Grid.Row="0" Background="Transparent" Padding="0,14,0,16" MouseLeftButtonDown="OnDragWindow">
+                <TextBlock x:Name="PageTitle" Style="{StaticResource PageTitle}"/>
+            </Border>
+
+            <Grid Grid.Row="1">
+
+                <!-- Introduction -->
+                <Border x:Name="IntroPage" Style="{StaticResource CardBorder}">
+                    <StackPanel>
+                        <TextBlock x:Name="IntroLead" Style="{StaticResource BodyText}"/>
+                        <TextBlock Style="{StaticResource BodyText}" Margin="0,12,0,0"
+                                   Text="Éditeur PDF permet de lire, annoter, remplir, signer et réorganiser vos documents PDF, dans une interface inspirée de macOS."/>
+                        <StackPanel x:Name="IntroBullets" Margin="0,18,0,0"/>
+                        <TextBlock x:Name="UpgradeNotice" Style="{StaticResource SecondaryText}" Margin="0,18,0,0" Visibility="Collapsed"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- Options -->
+                <Border x:Name="OptionsPage" Style="{StaticResource CardBorder}" Visibility="Collapsed">
+                    <StackPanel>
+                        <TextBlock Text="EMPLACEMENT" Style="{StaticResource SecondaryText}" FontSize="11" FontWeight="SemiBold"/>
+                        <DockPanel Margin="0,7,0,0">
+                            <Button x:Name="ChangeFolderButton" DockPanel.Dock="Right" Style="{StaticResource MacButton}"
+                                    MinWidth="0" Height="28" Padding="12,0" Content="Modifier…" Click="OnChangeFolderClick"/>
+                            <Border Margin="0,0,8,0" Padding="10,0" Height="28" CornerRadius="7" BorderThickness="1"
+                                    Background="{DynamicResource FieldBg}" BorderBrush="{DynamicResource FieldBorderBrush}">
+                                <TextBlock x:Name="FolderText" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                                           Foreground="{DynamicResource TextPrimary}"/>
+                            </Border>
+                        </DockPanel>
+                        <TextBlock x:Name="SpaceText" Style="{StaticResource SecondaryText}" Margin="0,7,0,0"/>
+                        <TextBlock x:Name="FolderError" Style="{StaticResource SecondaryText}" Foreground="{DynamicResource DangerBrush}"
+                                   Margin="0,4,0,0" Visibility="Collapsed"/>
+
+                        <Rectangle Height="1" Fill="{DynamicResource SeparatorBrush}" Margin="0,16,0,16"/>
+
+                        <CheckBox Style="{StaticResource MacCheckBox}" IsChecked="True" IsEnabled="False" Content="Ajouter Éditeur PDF au menu Démarrer"/>
+                        <CheckBox x:Name="DesktopCheck" Style="{StaticResource MacCheckBox}" Margin="0,12,0,0" Content="Créer un raccourci sur le Bureau"/>
+                        <CheckBox x:Name="AssociationCheck" Style="{StaticResource MacCheckBox}" Margin="0,12,0,0" IsChecked="True">
+                            <StackPanel>
+                                <TextBlock Text="Proposer Éditeur PDF pour ouvrir les fichiers PDF"/>
+                                <TextBlock Style="{StaticResource SecondaryText}" Margin="0,2,0,0"
+                                           Text="L’application apparaît dans « Ouvrir avec ». Votre lecteur PDF par défaut ne change pas."/>
+                            </StackPanel>
+                        </CheckBox>
+                    </StackPanel>
+                </Border>
+
+                <!-- Progression -->
+                <Border x:Name="ProgressPage" Style="{StaticResource CardBorder}" Visibility="Collapsed">
+                    <StackPanel VerticalAlignment="Center" Margin="10,0">
+                        <TextBlock x:Name="ProgressText" Style="{StaticResource BodyText}" FontWeight="SemiBold"/>
+                        <ProgressBar x:Name="InstallProgress" Style="{StaticResource MacProgressBar}" Margin="0,14,0,0"/>
+                        <TextBlock x:Name="ProgressDetail" Style="{StaticResource SecondaryText}" Margin="0,10,0,0"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- Confirmation de desinstallation -->
+                <Border x:Name="UninstallPage" Style="{StaticResource CardBorder}" Visibility="Collapsed">
+                    <StackPanel>
+                        <TextBlock x:Name="UninstallText" Style="{StaticResource BodyText}"/>
+                        <TextBlock Style="{StaticResource BodyText}" Margin="0,12,0,0"
+                                   Text="L’application, ses raccourcis et son inscription dans Windows seront supprimés. Vos documents PDF ne sont pas touchés."/>
+                        <CheckBox x:Name="RemoveDataCheck" Style="{StaticResource MacCheckBox}" Margin="0,22,0,0">
+                            <StackPanel>
+                                <TextBlock Text="Supprimer aussi mes réglages"/>
+                                <TextBlock Style="{StaticResource SecondaryText}" Margin="0,2,0,0"
+                                           Text="Signatures enregistrées, styles des outils et fichiers récents."/>
+                            </StackPanel>
+                        </CheckBox>
+                        <TextBlock x:Name="UninstallError" Style="{StaticResource SecondaryText}" Foreground="{DynamicResource DangerBrush}"
+                                   Margin="0,14,0,0" Visibility="Collapsed"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- Resultat -->
+                <Border x:Name="ResultPage" Style="{StaticResource CardBorder}" Visibility="Collapsed">
+                    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Margin="10,0">
+                        <Grid Width="60" Height="60" HorizontalAlignment="Center">
+                            <Ellipse x:Name="ResultCircle" Fill="{DynamicResource SuccessBrush}"/>
+                            <Path x:Name="ResultGlyph" Data="M18,31 L26,39 L43,21" Stroke="White" StrokeThickness="4.5"
+                                  StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round"/>
+                        </Grid>
+                        <TextBlock x:Name="ResultTitle" Style="{StaticResource PageTitle}" FontSize="15" TextAlignment="Center"
+                                   HorizontalAlignment="Center" Margin="0,16,0,6"/>
+                        <TextBlock x:Name="ResultText" Style="{StaticResource BodyText}" TextAlignment="Center" MaxWidth="380"
+                                   Foreground="{DynamicResource TextSecondary}"/>
+                        <CheckBox x:Name="LaunchCheck" Style="{StaticResource MacCheckBox}" IsChecked="True" HorizontalAlignment="Center"
+                                  Margin="0,20,0,0" Content="Ouvrir Éditeur PDF maintenant"/>
+                        <Button x:Name="DefaultAppsLink" Style="{StaticResource MacLinkButton}" HorizontalAlignment="Center" Margin="0,12,0,0"
+                                Content="Choisir Éditeur PDF comme application PDF par défaut…" Click="OnDefaultAppsClick"/>
+                    </StackPanel>
+                </Border>
+            </Grid>
+
+            <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,18,0,0">
+                <Button x:Name="BackButton" Style="{StaticResource MacButton}" Content="Revenir" Margin="0,0,10,0" Click="OnBackClick"/>
+                <Button x:Name="NextButton" Style="{StaticResource MacDefaultButton}" Content="Continuer" Click="OnNextClick"/>
+            </StackPanel>
+        </Grid>
+    </Grid>
+</Window>

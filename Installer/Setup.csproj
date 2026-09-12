@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <!-- .NET Framework 4.7.2 est integre a Windows 10 (1803 et suivants) et a Windows 11 :
+         le programme d'installation demarre sans aucun runtime a telecharger. -->
+    <TargetFramework>net472</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <RootNamespace>PDFEditorSetup</RootNamespace>
+    <AssemblyName>Setup</AssemblyName>
+    <ApplicationIcon>..\PDFEditor.ico</ApplicationIcon>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <Product>Éditeur PDF</Product>
+    <AssemblyTitle>Installation d’Éditeur PDF</AssemblyTitle>
+    <Version>1.0.0</Version>
+    <NeutralLanguage>fr-FR</NeutralLanguage>
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <Prefer32Bit>false</Prefer32Bit>
+    <DebugType>embedded</DebugType>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Reference Include="System.IO.Compression" />
+    <Reference Include="System.IO.Compression.FileSystem" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="..\docs\icone.png" Link="icone.png" />
+  </ItemGroup>
+
+</Project>
