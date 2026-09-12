@@ -1,0 +1,97 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:sys="clr-namespace:System;assembly=System.Runtime">
+
+    <!-- ============================================================ -->
+    <!-- Palette CLAIRE (reprise de l'app Notes, theme clair)         -->
+    <!-- ============================================================ -->
+
+    <!-- Fonds -->
+    <SolidColorBrush x:Key="WindowBg" Color="#FFFFFFFF"/>
+    <SolidColorBrush x:Key="SidebarBg" Color="#FFF1EFEC"/>
+    <SolidColorBrush x:Key="ListBg" Color="#FFFFFFFF"/>
+    <SolidColorBrush x:Key="EditorBg" Color="#FFFFFFFF"/>
+    <SolidColorBrush x:Key="CanvasBg" Color="#FFE9E7E4"/>
+    <SolidColorBrush x:Key="InspectorBg" Color="#FFF6F5F3"/>
+    <SolidColorBrush x:Key="MarkupBarBg" Color="#FFFBFAF9"/>
+
+    <!-- Textes -->
+    <SolidColorBrush x:Key="TextPrimary" Color="#FF1C1C1E"/>
+    <SolidColorBrush x:Key="TextSecondary" Color="#FF8A8A8E"/>
+    <SolidColorBrush x:Key="TextTertiary" Color="#FFAEAEB2"/>
+    <SolidColorBrush x:Key="TextPlaceholder" Color="#FFA5A5AA"/>
+    <SolidColorBrush x:Key="TextOnSelection" Color="#FF1C1C1E"/>
+    <SolidColorBrush x:Key="TextOnAccent" Color="#FF1C1C1E"/>
+
+    <!-- Accent et selections -->
+    <SolidColorBrush x:Key="AccentYellow" Color="#FFFFCC00"/>
+    <SolidColorBrush x:Key="AccentDeep" Color="#FFD9A300"/>
+    <SolidColorBrush x:Key="SidebarSelectionBg" Color="#FFF8E4A4"/>
+    <SolidColorBrush x:Key="SidebarSelectionInactiveBg" Color="#FFE4E1DD"/>
+    <SolidColorBrush x:Key="ListSelectionBg" Color="#FFFDE49A"/>
+    <SolidColorBrush x:Key="ListSelectionInactiveBg" Color="#FFE9E6E2"/>
+
+    <!-- Separateurs et etats -->
+    <SolidColorBrush x:Key="SeparatorBrush" Color="#FFDFDCD8"/>
+    <SolidColorBrush x:Key="ListSeparatorBrush" Color="#FFE9E7E4"/>
+    <SolidColorBrush x:Key="HoverBg" Color="#0D000000"/>
+    <SolidColorBrush x:Key="PressedBg" Color="#16000000"/>
+
+    <!-- Icones -->
+    <SolidColorBrush x:Key="IconBrush" Color="#FF6C6C70"/>
+    <SolidColorBrush x:Key="IconActiveBrush" Color="#FF1C1C1E"/>
+    <SolidColorBrush x:Key="IconDisabledBrush" Color="#FFC3C3C7"/>
+    <SolidColorBrush x:Key="FolderIconBrush" Color="#FFB9A25B"/>
+
+    <!-- Popovers / champs / scrollbars -->
+    <SolidColorBrush x:Key="PopoverBg" Color="#FFFFFFFF"/>
+    <SolidColorBrush x:Key="PopoverBorderBrush" Color="#20000000"/>
+    <SolidColorBrush x:Key="SearchFieldBg" Color="#FFE8E5E1"/>
+    <SolidColorBrush x:Key="FieldBg" Color="#FFFFFFFF"/>
+    <SolidColorBrush x:Key="FieldBorderBrush" Color="#FFD9D6D2"/>
+    <SolidColorBrush x:Key="ScrollThumbBrush" Color="#38000000"/>
+    <SolidColorBrush x:Key="HudBg" Color="#F2FFFFFF"/>
+    <SolidColorBrush x:Key="SegmentTrackBg" Color="#FFE6E3DF"/>
+    <SolidColorBrush x:Key="SegmentSelectedBg" Color="#FFFFFFFF"/>
+    <SolidColorBrush x:Key="SwitchOffBg" Color="#FFD9D6D2"/>
+    <SolidColorBrush x:Key="CardBg" Color="#FFF7F6F4"/>
+    <SolidColorBrush x:Key="DropZoneBrush" Color="#FFC9C5BF"/>
+
+    <!-- Feux tricolores -->
+    <SolidColorBrush x:Key="TrafficRed" Color="#FFFF5F57"/>
+    <SolidColorBrush x:Key="TrafficYellow" Color="#FFFEBC2E"/>
+    <SolidColorBrush x:Key="TrafficGreen" Color="#FF28C840"/>
+    <SolidColorBrush x:Key="TrafficInactive" Color="#FFD5D2CD"/>
+    <SolidColorBrush x:Key="TrafficGlyph" Color="#80000000"/>
+
+    <!-- Document -->
+    <SolidColorBrush x:Key="PageBorderBrush" Color="#1A000000"/>
+    <SolidColorBrush x:Key="TextSelectionBrush" Color="#55FFCC00"/>
+    <SolidColorBrush x:Key="SearchHitBrush" Color="#5CFFD60A"/>
+    <SolidColorBrush x:Key="SearchCurrentBrush" Color="#8CFF9500"/>
+    <SolidColorBrush x:Key="SelectionOutlineBrush" Color="#FFE0A800"/>
+    <SolidColorBrush x:Key="HandleFillBrush" Color="#FFFFFFFF"/>
+    <SolidColorBrush x:Key="HoverOutlineBrush" Color="#B3E0A800"/>
+    <SolidColorBrush x:Key="ThumbSelectionBrush" Color="#FFFFCC00"/>
+
+    <!-- Etats -->
+    <SolidColorBrush x:Key="DangerBrush" Color="#FFFF3B30"/>
+    <SolidColorBrush x:Key="SuccessBrush" Color="#FF34C759"/>
+
+    <!-- ============================================================ -->
+    <!-- Metriques, polices et effets                                 -->
+    <!-- ============================================================ -->
+
+    <sys:Double x:Key="ToolbarHeight">52</sys:Double>
+
+    <FontFamily x:Key="UiFont">Segoe UI Variable Text, Segoe UI</FontFamily>
+    <FontFamily x:Key="UiFontDisplay">Segoe UI Variable Display, Segoe UI</FontFamily>
+    <FontFamily x:Key="MonoFont">Cascadia Mono, Consolas</FontFamily>
+
+    <CornerRadius x:Key="RowRadius">6</CornerRadius>
+
+    <DropShadowEffect x:Key="PopoverShadow" BlurRadius="24" ShadowDepth="6" Direction="270" Opacity="0.22" Color="#000000"/>
+    <DropShadowEffect x:Key="HudShadow" BlurRadius="18" ShadowDepth="3" Direction="270" Opacity="0.20" Color="#000000"/>
+    <DropShadowEffect x:Key="CardShadow" BlurRadius="10" ShadowDepth="1" Direction="270" Opacity="0.10" Color="#000000"/>
+
+</ResourceDictionary>
