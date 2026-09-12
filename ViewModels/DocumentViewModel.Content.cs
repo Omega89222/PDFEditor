@@ -819,8 +819,12 @@ public sealed partial class DocumentViewModel
     /// <summary>Remplacement modifiable d'une ligne de texte existante.</summary>
     public TextEditAnnotation CreateTextEdit(int pageIndex, PdfTextLine line, Color coverColor)
     {
-        var family = FontCatalog.MatchFamily(line.FontName, line.Serif, line.Monospace);
-        var fontSize = line.FontSize > 1 ? Math.Round(line.FontSize * 2) / 2 : Math.Max(4, line.Bounds.Height * 0.75);
+        // La police est relue dans le PDF (nom reel, graisse, italique) pour rester fidele au document.
+        var pdfFont = _pdf.GetTextFont(pageIndex, line.Bounds);
+        var fontName = !string.IsNullOrWhiteSpace(pdfFont?.Name) ? pdfFont!.Name : line.FontName;
+        var family = FontCatalog.MatchFamily(fontName, pdfFont?.Serif ?? line.Serif, pdfFont?.Monospace ?? line.Monospace);
+        var (boldName, italicName) = FontCatalog.StyleFromName(fontName);
+        var fontSize = line.FontSize > 1 ? Math.Round(line.FontSize, 2) : Math.Max(4, line.Bounds.Height * 0.75);
 
         var edit = new TextEditAnnotation
         {
@@ -835,8 +839,10 @@ public sealed partial class DocumentViewModel
         };
 
         edit.FontFamily = family;
-        edit.Bold = line.Bold;
-        edit.Italic = line.Italic;
+
+        // « Arial Black » porte deja sa graisse : ne pas la remettre, sinon Windows choisit une autre police.
+        edit.Bold = (line.Bold || boldName || (pdfFont?.Bold ?? false)) && !FontCatalog.FamilyCarriesWeight(family);
+        edit.Italic = (line.Italic || italicName || (pdfFont?.Italic ?? false)) && !FontCatalog.FamilyCarriesItalic(family);
         edit.FontSize = fontSize;
         edit.TextColor = line.Color;
 

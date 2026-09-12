@@ -22,9 +22,10 @@ public static class FontCatalog
 {
     private static readonly string[] Preferred =
     {
-        "Arial", "Helvetica", "Times New Roman", "Courier New", "Segoe UI", "Calibri", "Georgia",
-        "Verdana", "Tahoma", "Trebuchet MS", "Garamond", "Century Gothic", "Book Antiqua",
-        "Palatino Linotype", "Franklin Gothic Medium", "Comic Sans MS", "Consolas", "Lucida Console",
+        "Arial", "Helvetica", "Times New Roman", "Courier New", "Segoe UI", "Calibri", "Cambria", "Aptos",
+        "Georgia", "Verdana", "Tahoma", "Trebuchet MS", "Garamond", "Century Gothic", "Book Antiqua",
+        "Palatino Linotype", "Franklin Gothic Medium", "Candara", "Corbel", "Constantia", "Arial Narrow",
+        "Bahnschrift", "Impact", "Rockwell", "Comic Sans MS", "Consolas", "Cascadia Mono", "Lucida Console",
         "Segoe Print", "Segoe Script", "Ink Free", "Lucida Handwriting", "Bradley Hand ITC", "Brush Script MT",
         "Freestyle Script", "Mistral", "Kristen ITC"
     };
@@ -196,51 +197,282 @@ public static class FontCatalog
         return true;
     }
 
-    /// <summary>Famille d'affichage la plus proche d'une police trouvee dans un PDF.</summary>
-    public static string MatchFamily(string pdfFontName, bool serif, bool monospace)
+    /// <summary>Familles installees, indexees par nom compact (« timesnewroman »).</summary>
+    private static Dictionary<string, string>? _installedByCompact;
+
+    private static Dictionary<string, string> InstalledByCompact
     {
-        var name = pdfFontName.ToLowerInvariant();
-        var plus = name.IndexOf('+');
-        if (plus is > 0 and < 8)
+        get
         {
-            name = name[(plus + 1)..];
+            if (_installedByCompact is null)
+            {
+                var map = new Dictionary<string, string>(StringComparer.Ordinal);
+                foreach (var family in Fonts.SystemFontFamilies)
+                {
+                    var key = Compact(family.Source);
+                    if (key.Length > 0 && !map.ContainsKey(key))
+                    {
+                        map[key] = family.Source;
+                    }
+                }
+
+                _installedByCompact = map;
+            }
+
+            return _installedByCompact;
+        }
+    }
+
+    /// <summary>Suffixes de style a retirer d'un nom de police PDF (« Arial-BoldMT »).</summary>
+    private static readonly string[] StyleSuffixes =
+    {
+        "psmt", "ps", "mt", "std", "pro", "lt", "ce", "wgl4", "identityh", "identityv",
+        "bolditalic", "boldoblique", "semibold", "demibold", "extrabold", "ultrabold", "bold",
+        "italic", "oblique", "regular", "roman", "book", "light", "medium", "black", "heavy", "bd", "it", "rg"
+    };
+
+    /// <summary>Equivalences vers une police installee : clones metriques, polices libres et polices web.</summary>
+    private static readonly (string Contains, string Family)[] Aliases =
+    {
+        ("liberationsans", "Arial"), ("liberationserif", "Times New Roman"), ("liberationmono", "Courier New"),
+        ("nimbussan", "Arial"), ("nimbusrom", "Times New Roman"), ("nimbusmon", "Courier New"),
+        ("freesans", "Arial"), ("freeserif", "Times New Roman"), ("freemono", "Courier New"),
+        ("dejavusansmono", "Consolas"), ("dejavusans", "Verdana"), ("dejavuserif", "Georgia"),
+        ("bitstreamvera", "Verdana"), ("carlito", "Calibri"), ("caladea", "Cambria"), ("aptos", "Calibri"),
+        ("helvetica", "Arial"), ("arialnarrow", "Arial Narrow"), ("arial", "Arial"),
+        ("timesnewroman", "Times New Roman"), ("times", "Times New Roman"), ("courier", "Courier New"),
+        ("cmtt", "Courier New"), ("cmss", "Arial"), ("cmr", "Times New Roman"), ("cmbx", "Times New Roman"),
+        ("cmti", "Times New Roman"), ("lmmono", "Courier New"), ("lmsans", "Arial"), ("lmroman", "Times New Roman"),
+        ("latinmodern", "Times New Roman"), ("computermodern", "Times New Roman"),
+        ("segoe", "Segoe UI"), ("calibri", "Calibri"), ("cambria", "Cambria"), ("candara", "Candara"),
+        ("corbel", "Corbel"), ("constantia", "Constantia"), ("georgia", "Georgia"), ("verdana", "Verdana"),
+        ("tahoma", "Tahoma"), ("trebuchet", "Trebuchet MS"), ("consolas", "Consolas"), ("garamond", "Garamond"),
+        ("palatino", "Palatino Linotype"), ("bookantiqua", "Book Antiqua"), ("centurygothic", "Century Gothic"),
+        ("futura", "Century Gothic"), ("avenir", "Century Gothic"), ("franklin", "Franklin Gothic Medium"),
+        ("comicsans", "Comic Sans MS"), ("impact", "Impact"), ("rockwell", "Rockwell"),
+        ("roboto", "Segoe UI"), ("opensans", "Segoe UI"), ("notosansmono", "Consolas"), ("notosans", "Segoe UI"),
+        ("sourcesans", "Segoe UI"), ("lato", "Segoe UI"), ("inter", "Segoe UI"), ("ptsans", "Segoe UI"),
+        ("montserrat", "Century Gothic"), ("poppins", "Century Gothic"), ("ptserif", "Georgia"),
+        ("notoserif", "Georgia"), ("sourceserif", "Georgia"), ("merriweather", "Georgia"), ("lora", "Georgia"),
+        ("minion", "Times New Roman"), ("myriad", "Arial"), ("thorndale", "Times New Roman"), ("albany", "Arial"),
+        ("cumberland", "Courier New")
+    };
+
+    /// <summary>
+    /// Familles resolues par Windows mais absentes de la liste des familles
+    /// (« Arial Black » est range sous « Arial » par WPF).
+    /// </summary>
+    private static readonly Dictionary<string, bool> Probed = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>Vrai si Windows sait dessiner cette famille sous ce nom exact.</summary>
+    public static bool IsInstalled(string family)
+    {
+        if (string.IsNullOrWhiteSpace(family))
+        {
+            return false;
         }
 
-        foreach (var family in Families)
+        if (InstalledByCompact.ContainsKey(Compact(family)))
         {
-            var compact = family.Replace(" ", "").ToLowerInvariant();
-            if (name.Replace(" ", "").Replace("-", "").StartsWith(compact, StringComparison.Ordinal))
+            return true;
+        }
+
+        lock (Probed)
+        {
+            if (Probed.TryGetValue(family, out var known))
             {
-                return family;
+                return known;
+            }
+
+            var found = false;
+            try
+            {
+                var typeface = new Typeface(new FontFamily(family), FontStyles.Normal, FontWeights.Normal, FontStretches.Normal);
+                if (typeface.TryGetGlyphTypeface(out var glyphs))
+                {
+                    var wanted = Compact(family);
+                    found = glyphs.Win32FamilyNames.Values.Concat(glyphs.FamilyNames.Values)
+                        .Any(name => Compact(name) == wanted);
+                }
+            }
+            catch
+            {
+                found = false;
+            }
+
+            Probed[family] = found;
+            return found;
+        }
+    }
+
+    /// <summary>Vrai si le nom de la famille porte deja la graisse (« Arial Black »).</summary>
+    public static bool FamilyCarriesWeight(string family)
+    {
+        var compact = Compact(family);
+        return compact.EndsWith("black", StringComparison.Ordinal) || compact.EndsWith("bold", StringComparison.Ordinal)
+            || compact.EndsWith("heavy", StringComparison.Ordinal) || compact.EndsWith("light", StringComparison.Ordinal)
+            || compact.EndsWith("semibold", StringComparison.Ordinal) || compact.EndsWith("medium", StringComparison.Ordinal);
+    }
+
+    /// <summary>Vrai si le nom de la famille porte deja l'italique.</summary>
+    public static bool FamilyCarriesItalic(string family)
+    {
+        var compact = Compact(family);
+        return compact.EndsWith("italic", StringComparison.Ordinal) || compact.EndsWith("oblique", StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// Famille la plus proche d'une police trouvee dans un PDF. Le nom est nettoye
+    /// (prefixe de sous-ensemble « ABCDEF+ », variante « ,Bold », suffixes « -BoldMT »), puis
+    /// compare aux polices du systeme, aux equivalences connues, enfin aux indices du document.
+    /// </summary>
+    public static string MatchFamily(string pdfFontName, bool serif, bool monospace)
+    {
+        var raw = (pdfFontName ?? "").Trim();
+
+        var plus = raw.IndexOf('+');
+        if (plus is > 0 and < 8)
+        {
+            raw = raw[(plus + 1)..];
+        }
+
+        var comma = raw.IndexOf(',');
+        if (comma > 0)
+        {
+            raw = raw[..comma];
+        }
+
+        // 1. Le nom exact (« Arial Black »), puis le meme nom sans ses suffixes de style.
+        foreach (var candidate in NameCandidates(raw))
+        {
+            if (InstalledByCompact.TryGetValue(Compact(candidate), out var installed))
+            {
+                return installed;
+            }
+
+            if (IsInstalled(candidate))
+            {
+                return candidate;
             }
         }
 
-        if (name.Contains("courier") || name.Contains("mono") || name.Contains("consol") || monospace)
+        // 2. Equivalences connues.
+        var compact = Compact(raw);
+        foreach (var (contains, family) in Aliases)
+        {
+            if (compact.Contains(contains, StringComparison.Ordinal) && IsInstalled(family))
+            {
+                return InstalledByCompact.TryGetValue(Compact(family), out var installed) ? installed : family;
+            }
+        }
+
+        // 3. Indices donnes par le document.
+        if (monospace || compact.Contains("mono", StringComparison.Ordinal) || compact.Contains("consol", StringComparison.Ordinal))
         {
             return "Courier New";
         }
 
-        if (name.Contains("times") || name.Contains("serif") && !name.Contains("sans") || name.Contains("garamond")
-            || name.Contains("georgia") || name.Contains("cambria") || name.Contains("minion") || serif)
+        if (compact.Contains("script", StringComparison.Ordinal) || compact.Contains("hand", StringComparison.Ordinal))
         {
-            return Families.Contains("Georgia") && name.Contains("georgia") ? "Georgia" : "Times New Roman";
+            return HandwritingFamilies[0];
         }
 
-        if (name.Contains("calibri") && Families.Contains("Calibri"))
+        if (serif && !compact.Contains("sans", StringComparison.Ordinal))
         {
-            return "Calibri";
-        }
-
-        if (name.Contains("segoe") && Families.Contains("Segoe UI"))
-        {
-            return "Segoe UI";
-        }
-
-        if (name.Contains("verdana") && Families.Contains("Verdana"))
-        {
-            return "Verdana";
+            return "Times New Roman";
         }
 
         return "Arial";
+    }
+
+    /// <summary>Gras et italique annonces par le nom de la police (« Arial-BoldItalicMT »).</summary>
+    public static (bool Bold, bool Italic) StyleFromName(string pdfFontName)
+    {
+        var compact = Compact(pdfFontName ?? "");
+        var bold = compact.Contains("bold", StringComparison.Ordinal)
+                   || compact.Contains("black", StringComparison.Ordinal)
+                   || compact.Contains("heavy", StringComparison.Ordinal);
+        var italic = compact.Contains("italic", StringComparison.Ordinal)
+                     || compact.Contains("oblique", StringComparison.Ordinal);
+        return (bold, italic);
+    }
+
+    /// <summary>« Arial-BoldMT » -> « Arial Bold MT », « Arial Bold », « Arial ».</summary>
+    private static IEnumerable<string> NameCandidates(string raw)
+    {
+        var name = Normalize(raw);
+        if (name.Length == 0)
+        {
+            yield break;
+        }
+
+        yield return name;
+
+        for (var round = 0; round < 5; round++)
+        {
+            var compact = Compact(name);
+            var shorter = name;
+
+            foreach (var suffix in StyleSuffixes)
+            {
+                if (compact.Length > suffix.Length + 2 && compact.EndsWith(suffix, StringComparison.Ordinal))
+                {
+                    shorter = TrimLetters(name, suffix.Length);
+                    break;
+                }
+            }
+
+            if (shorter.Length == 0 || shorter == name)
+            {
+                yield break;
+            }
+
+            name = shorter;
+            yield return name;
+        }
+    }
+
+    /// <summary>Nom lisible : separateurs remplaces par des espaces.</summary>
+    private static string Normalize(string value)
+    {
+        var builder = new System.Text.StringBuilder(value.Length);
+        foreach (var c in value)
+        {
+            builder.Append(c is '-' or '_' or '.' or '#' ? ' ' : c);
+        }
+
+        return string.Join(' ', builder.ToString().Split(' ', StringSplitOptions.RemoveEmptyEntries));
+    }
+
+    /// <summary>Retire les <paramref name="count"/> dernieres lettres ou chiffres du nom.</summary>
+    private static string TrimLetters(string name, int count)
+    {
+        var index = name.Length;
+        var removed = 0;
+        while (index > 0 && removed < count)
+        {
+            index--;
+            if (char.IsLetterOrDigit(name[index]))
+            {
+                removed++;
+            }
+        }
+
+        return name[..index].TrimEnd(' ', '-', '_', '.');
+    }
+
+    /// <summary>Nom reduit aux lettres et chiffres, en minuscules.</summary>
+    private static string Compact(string value)
+    {
+        var builder = new System.Text.StringBuilder(value.Length);
+        foreach (var c in value)
+        {
+            if (char.IsLetterOrDigit(c))
+            {
+                builder.Append(char.ToLowerInvariant(c));
+            }
+        }
+
+        return builder.ToString();
     }
 }

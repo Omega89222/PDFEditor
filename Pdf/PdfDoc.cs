@@ -468,6 +468,57 @@ public sealed unsafe class PdfDoc : IDisposable
         }
     }
 
+    /// <summary>
+    /// Police d'origine de la ligne affichee : nom reel, graisse, italique et corps.
+    /// Sert a rester fidele au document quand on modifie son texte.
+    /// </summary>
+    public PdfFontInfo? GetTextFont(int index, Rect display)
+    {
+        lock (Sync)
+        {
+            var page = GetPage(index);
+            var info = GetPageInfo(index);
+
+            foreach (var match in TextRegions.Find(page, info, new[] { display }))
+            {
+                var font = Native.FPDFTextObj_GetFont(match.Object);
+                if (font == IntPtr.Zero)
+                {
+                    continue;
+                }
+
+                Native.FPDFTextObj_GetFontSize(match.Object, out var size);
+                return new PdfFontInfo
+                {
+                    BaseName = ReadFontName(font, Native.FPDFFont_GetBaseFontName),
+                    FamilyName = ReadFontName(font, Native.FPDFFont_GetFamilyName),
+                    Flags = Native.FPDFFont_GetFlags(font),
+                    Weight = Native.FPDFFont_GetWeight(font),
+                    ItalicAngle = Native.FPDFFont_GetItalicAngle(font, out var angle) != 0 ? angle : 0,
+                    IsEmbedded = Native.FPDFFont_GetIsEmbedded(font) != 0,
+                    Size = size
+                };
+            }
+
+            return null;
+        }
+    }
+
+    private delegate UIntPtr FontNameReader(IntPtr font, byte[]? buffer, UIntPtr length);
+
+    private static string ReadFontName(IntPtr font, FontNameReader read)
+    {
+        var length = (int)read(font, null, UIntPtr.Zero);
+        if (length <= 1)
+        {
+            return "";
+        }
+
+        var buffer = new byte[length];
+        var written = (int)read(font, buffer, (UIntPtr)(uint)length);
+        return written <= 1 ? "" : System.Text.Encoding.UTF8.GetString(buffer, 0, written - 1).Trim();
+    }
+
     // =====================================================================
     // Texte, signets, liens, metadonnees
     // =====================================================================

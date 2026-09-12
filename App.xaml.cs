@@ -51,6 +51,14 @@ public partial class App : Application
             return;
         }
 
+        if (TryGetOption(args, "--fonts", out var fontsPath))
+        {
+            Shutdown(DumpFonts(fontsPath, TryGetOption(args, "--report", out var report)
+                ? report
+                : Path.Combine(Path.GetTempPath(), "PDFEditor-fonts.txt")));
+            return;
+        }
+
         var selfTest = TryGetOption(args, "--selftest", out var selfTestReport);
         var snapshot = SnapshotOptions.Parse(args);
         if (snapshot is not null || selfTest)
@@ -362,6 +370,8 @@ public partial class App : Application
         public int? Page { get; private init; }
         public bool NoInspector { get; private init; }
         public bool Demo { get; private init; }
+        public string? EditLine { get; private init; }
+        public string? Save { get; private init; }
         public int Delay { get; private init; } = 2500;
 
         public static SnapshotOptions? Parse(string[] args)
@@ -386,6 +396,8 @@ public partial class App : Application
                 Page = TryGetOption(args, "--page", out var page) && int.TryParse(page, out var p) ? p : null,
                 NoInspector = args.Contains("--no-inspector"),
                 Demo = args.Contains("--demo"),
+                EditLine = TryGetOption(args, "--edit-line", out var editLine) ? editLine : args.Contains("--edit-first-line") ? "" : null,
+                Save = TryGetOption(args, "--save", out var savePath) ? savePath : null,
                 Delay = TryGetOption(args, "--delay", out var delay) && int.TryParse(delay, out var d) ? d : 2500
             };
         }
@@ -440,6 +452,11 @@ public partial class App : Application
                 AddDemoAnnotations(vm);
             }
 
+            if (options.EditLine is not null)
+            {
+                RewriteLine(vm, options.EditLine);
+            }
+
             await Task.Delay(400);
 
             if (vm.Document is { } document)
@@ -466,6 +483,11 @@ public partial class App : Application
                 }
             }
 
+            if (options.Save is { Length: > 0 } savePath && vm.Document is { } toSave)
+            {
+                await toSave.SaveToAsync(Path.GetFullPath(savePath));
+            }
+
             await Task.Delay(options.Delay);
             SaveSnapshot(window, options.Output);
         }
@@ -476,6 +498,32 @@ public partial class App : Application
         }
 
         Shutdown(exitCode);
+    }
+
+    /// <summary>
+    /// Outil : remplace une ligne par elle-meme. Le rendu doit rester identique a
+    /// l'original : c'est le controle de la police retenue pour modifier un texte.
+    /// </summary>
+    private static void RewriteLine(MainViewModel vm, string fragment)
+    {
+        if (vm.Document is not { Pages.Count: > 0 } document)
+        {
+            return;
+        }
+
+        var text = document.Pdf.GetTextPage(0);
+        var line = fragment.Length > 0
+            ? text.Lines.FirstOrDefault(l => l.Text.Contains(fragment, StringComparison.OrdinalIgnoreCase))
+            : text.Lines.FirstOrDefault(l => l.Text.Trim().Length > 3);
+
+        if (line is null)
+        {
+            return;
+        }
+
+        var edit = document.CreateTextEdit(0, line, Colors.White);
+        edit.Text = line.Text;
+        document.AddAnnotation(document.Pages[0], edit, select: false);
     }
 
     /// <summary>Annotations d'exemple sur la premiere page (captures du README).</summary>
@@ -540,6 +588,52 @@ public partial class App : Application
         comment.FontSize = 13;
         comment.TextColor = Color.FromRgb(0x0A, 0x60, 0xD6);
         document.AddAnnotation(page, comment, select: false);
+    }
+
+    /// <summary>
+    /// Outil : pour chaque ligne de texte, la police declaree par le PDF et la
+    /// famille installee retenue pour la modifier.
+    /// </summary>
+    private static int DumpFonts(string pdfPath, string reportPath)
+    {
+        try
+        {
+            var bytes = File.ReadAllBytes(Path.GetFullPath(pdfPath));
+            using var pdf = Pdf.PdfDoc.Open(bytes);
+
+            var builder = new StringBuilder();
+            builder.AppendLine($"Polices de {Path.GetFileName(pdfPath)} ({pdf.PageCount} pages)");
+
+            for (var index = 0; index < Math.Min(pdf.PageCount, 3); index++)
+            {
+                builder.AppendLine().AppendLine($"--- Page {index + 1} ---");
+                var text = pdf.GetTextPage(index);
+
+                foreach (var line in text.Lines.Take(14))
+                {
+                    var info = pdf.GetTextFont(index, line.Bounds);
+                    var name = string.IsNullOrWhiteSpace(info?.Name) ? line.FontName : info!.Name;
+                    var family = Pdf.FontCatalog.MatchFamily(name, info?.Serif ?? line.Serif, info?.Monospace ?? line.Monospace);
+                    var style = Pdf.FontCatalog.StyleFromName(name);
+
+                    builder.AppendLine($"« {(line.Text.Length <= 46 ? line.Text : line.Text[..44] + "…")} »");
+                    builder.AppendLine($"    PDF : {name}   (couche texte : {line.FontName})");
+                    builder.AppendLine($"    corps {line.FontSize:0.##} · graisse {info?.Weight ?? 0} · italique {info?.ItalicAngle ?? 0}° · indicateurs 0x{info?.Flags ?? 0:X} · incorporée {(info?.IsEmbedded == true ? "oui" : "non")}");
+                    var bold = (line.Bold || style.Bold || (info?.Bold ?? false)) && !Pdf.FontCatalog.FamilyCarriesWeight(family);
+                    var italic = (line.Italic || style.Italic || (info?.Italic ?? false)) && !Pdf.FontCatalog.FamilyCarriesItalic(family);
+                    builder.AppendLine($"    -> {family} · gras {bold} · italique {italic}");
+                }
+            }
+
+            Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(reportPath))!);
+            File.WriteAllText(reportPath, builder.ToString(), Encoding.UTF8);
+            return 0;
+        }
+        catch (Exception ex)
+        {
+            LogException(ex, "Polices");
+            return 1;
+        }
     }
 
     private static void SaveSnapshot(Window window, string path)

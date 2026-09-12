@@ -155,6 +155,14 @@ internal static unsafe class Native
     [DllImport(Lib)] public static extern void FPDFFont_Close(IntPtr font);
     [DllImport(Lib)] public static extern int FPDFTextObj_SetTextRenderMode(IntPtr text, int renderMode);
     [DllImport(Lib)] public static extern int FPDFTextObj_GetTextRenderMode(IntPtr text);
+    [DllImport(Lib)] public static extern IntPtr FPDFTextObj_GetFont(IntPtr text);
+    [DllImport(Lib)] public static extern int FPDFTextObj_GetFontSize(IntPtr text, out float size);
+    [DllImport(Lib)] public static extern UIntPtr FPDFFont_GetBaseFontName(IntPtr font, byte[]? buffer, UIntPtr length);
+    [DllImport(Lib)] public static extern UIntPtr FPDFFont_GetFamilyName(IntPtr font, byte[]? buffer, UIntPtr length);
+    [DllImport(Lib)] public static extern int FPDFFont_GetFlags(IntPtr font);
+    [DllImport(Lib)] public static extern int FPDFFont_GetWeight(IntPtr font);
+    [DllImport(Lib)] public static extern int FPDFFont_GetIsEmbedded(IntPtr font);
+    [DllImport(Lib)] public static extern int FPDFFont_GetItalicAngle(IntPtr font, out int angle);
     [DllImport(Lib)] public static extern int FPDFPageObj_GetMatrix(IntPtr pageObject, out FS_MATRIX matrix);
     [DllImport(Lib)] public static extern int FPDFFormObj_CountObjects(IntPtr formObject);
     [DllImport(Lib)] public static extern IntPtr FPDFFormObj_GetObject(IntPtr formObject, uint index);
