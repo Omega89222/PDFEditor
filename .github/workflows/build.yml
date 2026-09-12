@@ -1,0 +1,37 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Compilation Windows
+    runs-on: windows-latest
+
+    steps:
+      - name: Récupération du code
+        uses: actions/checkout@v4
+
+      - name: Installation de .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Compilation de l'application
+        run: dotnet build PDFEditor.csproj -c Release --nologo
+
+      - name: Compilation du programme d'installation
+        run: dotnet build Installer/Setup.csproj -c Release --nologo
+
+      - name: Publication
+        run: dotnet publish PDFEditor.csproj -c Release -r win-x64 --self-contained false -o publish --nologo
+
+      - name: Archive de l'exécutable
+        uses: actions/upload-artifact@v4
+        with:
+          name: PDFEditor-windows-x64
+          path: publish/
+          if-no-files-found: error

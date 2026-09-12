@@ -1,0 +1,143 @@
+name: Installateur
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  installer:
+    name: Installateur Windows
+    runs-on: windows-latest
+
+    steps:
+      - name: Récupération du code
+        uses: actions/checkout@v4
+
+      - name: Installation de .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Détermination de la version
+        id: version
+        shell: pwsh
+        run: |
+          if ('${{ github.ref_type }}' -eq 'tag') {
+            $version = '${{ github.ref_name }}'.TrimStart('v')
+          }
+          elseif ((Get-Content PDFEditor.csproj -Raw) -match '<Version>([^<]+)</Version>') {
+            $version = $Matches[1]
+          }
+          else {
+            throw 'Version introuvable dans PDFEditor.csproj'
+          }
+          "version=$version" >> $env:GITHUB_OUTPUT
+          Write-Host "Version : $version"
+
+      - name: Construction de l'installateur
+        shell: powershell
+        run: |
+          .\build-installer.ps1 -Version '${{ steps.version.outputs.version }}'
+          if ($LASTEXITCODE) { throw "build-installer.ps1 a echoue (code $LASTEXITCODE)" }
+          $setup = Get-Item "dist\EditeurPDF-Setup-${{ steps.version.outputs.version }}.exe"
+          "SETUP=$($setup.FullName)" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          Write-Host ('Installateur : {0} ({1:N1} Mo)' -f $setup.Name, ($setup.Length / 1MB))
+
+      - name: Test d'installation, de lancement et de désinstallation
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $installDir = "$env:LOCALAPPDATA\Programs\PDFEditor"
+          $exe = Join-Path $installDir 'PDFEditor.exe'
+          $key = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\PDFEditor'
+          $shortcut = "$env:APPDATA\Microsoft\Windows\Start Menu\Programs\Éditeur PDF.lnk"
+          $association = 'HKCU:\Software\Classes\PDFEditor.Document\shell\open\command'
+          $data = "$env:APPDATA\PDFEditor"
+          $log = "$env:TEMP\PDFEditor-Setup.log"
+
+          # 1. Installation silencieuse pour l'utilisateur courant
+          $setup = Start-Process $env:SETUP -Wait -PassThru -ArgumentList '--quiet'
+          if ($setup.ExitCode -ne 0) { Get-Content $log -Tail 40; throw "Installation échouée (code $($setup.ExitCode))" }
+
+          if (-not (Test-Path $exe)) { throw "PDFEditor.exe absent de $installDir" }
+          if (-not (Test-Path (Join-Path $installDir 'Uninstall.exe'))) { throw 'Uninstall.exe absent' }
+          if (-not (Test-Path $shortcut)) { throw 'Raccourci du menu Démarrer absent' }
+          if (-not (Test-Path $key)) { throw 'Entrée absente des applications installées' }
+          if (-not (Test-Path $association)) { throw 'Association aux fichiers PDF absente' }
+          $entry = Get-ItemProperty $key
+          Write-Host "Installé : $($entry.DisplayName) $($entry.DisplayVersion) dans $($entry.InstallLocation)"
+
+          # 2. Lancement réel : l'application démarre, reste ouverte, puis se ferme proprement
+          $app = Start-Process $exe -PassThru
+          Start-Sleep -Seconds 15
+          if ($app.HasExited) { throw "Éditeur PDF s'est fermé au démarrage (code $($app.ExitCode))" }
+          if (Test-Path "$data\error.log") { Get-Content "$data\error.log"; throw 'Erreur au démarrage' }
+          Write-Host "Éditeur PDF démarre correctement (processus $($app.Id))"
+          $app.CloseMainWindow() | Out-Null
+          if (-not $app.WaitForExit(20000)) { Stop-Process -Id $app.Id -Force; throw "Éditeur PDF ne se ferme pas" }
+          if (-not (Test-Path "$data\settings.json")) { throw 'Réglages non enregistrés à la fermeture' }
+
+          # 3. Rendu réel de la fenêtre (ressources XAML, thème, icônes)
+          $shot = "$env:RUNNER_TEMP\accueil.png"
+          $env:PDFEDITOR_DATA_DIR = "$env:RUNNER_TEMP\pdfeditor-capture"
+          $snapshot = Start-Process $exe -Wait -PassThru -ArgumentList '--snapshot', $shot, '--delay', '2000'
+          Remove-Item Env:\PDFEDITOR_DATA_DIR
+          if ($snapshot.ExitCode -ne 0 -or -not (Test-Path $shot)) { throw 'Capture de la fenêtre impossible' }
+          Write-Host ('Capture de la fenêtre : {0:N0} Ko' -f ((Get-Item $shot).Length / 1KB))
+
+          # 4. Désinstallation silencieuse : l'application disparaît, les réglages restent
+          Start-Process (Join-Path $installDir 'Uninstall.exe') -Wait -ArgumentList '--uninstall', '--quiet'
+          foreach ($i in 1..60) {
+            if (-not (Test-Path $installDir) -and -not (Test-Path $key)) { break }
+            Start-Sleep -Seconds 1
+          }
+          if (Test-Path $exe) { throw 'PDFEditor.exe toujours présent après désinstallation' }
+          if (Test-Path $key) { throw 'Entrée toujours présente dans les applications installées' }
+          if (Test-Path $shortcut) { throw 'Raccourci du menu Démarrer toujours présent' }
+          if (Test-Path $association) { throw 'Association aux fichiers PDF toujours présente' }
+          if (-not (Test-Path "$data\settings.json")) { throw 'La désinstallation a supprimé les réglages' }
+          Get-Content $log -Tail 12
+          Write-Host 'Désinstallation propre, réglages conservés'
+
+      - name: Archive de l'installateur
+        uses: actions/upload-artifact@v4
+        with:
+          name: EditeurPDF-Setup-${{ steps.version.outputs.version }}
+          path: ${{ env.SETUP }}
+          if-no-files-found: error
+
+      - name: Publication de la version
+        if: github.ref_type == 'tag'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $version = '${{ steps.version.outputs.version }}'
+          $notes = @"
+          Éditeur PDF natif pour Windows, au style macOS : lire, annoter, remplir, signer et réorganiser vos documents PDF.
+
+          ## Installation
+
+          1. Téléchargez **EditeurPDF-Setup-$version.exe** ci-dessous.
+          2. Lancez-le et suivez l'assistant.
+          3. Ouvrez **Éditeur PDF** depuis le menu Démarrer, ou avec « Ouvrir avec » sur un fichier PDF.
+
+          Le runtime .NET est inclus : aucun prérequis à installer. L'installation se fait pour votre compte, sans droits administrateur. La désinstallation se fait depuis Paramètres › Applications et conserve vos réglages, sauf si vous demandez leur suppression.
+
+          > L'installateur n'est pas signé numériquement. Si Windows SmartScreen affiche « Windows a protégé votre ordinateur », cliquez sur **Informations complémentaires**, puis **Exécuter quand même**.
+
+          ## Au programme
+
+          - Lecture : zoom, défilement continu, page unique ou deux pages, mode nuit, recherche, signets et formulaires remplissables.
+          - Annotation : surlignage, zones de texte, stylo, formes, notes, tampons, signatures, images, liens, correcteur et caviardage réel.
+          - Modification du texte existant : seul le texte change, le fond de la page reste intact.
+          - Pages : réorganisation, rotation, insertion, recadrage, fusion, division, exports, filigrane, numérotation, OCR et mot de passe.
+
+          Windows 10 (1809) ou 11, 64 bits.
+          "@
+          gh release create '${{ github.ref_name }}' $env:SETUP --title "Éditeur PDF $version" --notes $notes
