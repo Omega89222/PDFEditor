@@ -65,7 +65,7 @@ Même esthétique que [Notes pour Windows](https://github.com/Omega89222/Notes-A
 
 - **Sélection de texte** et copie ; **surligner, souligner, barrer, souligner en ondulé**.
 - **Zones de texte** : police, taille, gras, italique, souligné, alignement, couleur du texte et du fond.
-- **Modifier le texte existant** du PDF, ligne par ligne : seul le texte change, le fond de la page reste intact.
+- **Modifier le texte existant** du PDF, ligne par ligne : la police d’origine est conservée, seul le texte change et le fond de la page reste intact.
 - **Stylo** et **surligneur** à main levée.
 - **Formes** : rectangle, ellipse, ligne, flèche ; épaisseur, pointillés, remplissage, opacité ; <kbd>Maj</kbd> contraint les proportions et les angles.
 - **Notes** (commentaires), **tampons** (prédéfinis, date du jour, personnalisés).
@@ -103,7 +103,7 @@ Même esthétique que [Notes pour Windows](https://github.com/Omega89222/Notes-A
 
 ## Installation
 
-1. Téléchargez **`EditeurPDF-Setup-1.0.0.exe`** depuis la page [**Releases**](https://github.com/Omega89222/PDFEditor/releases/latest).
+1. Téléchargez **`EditeurPDF-Setup-<version>.exe`** depuis la page [**Releases**](https://github.com/Omega89222/PDFEditor/releases/latest).
 2. Lancez-le et suivez l’assistant : Introduction, Options, Installation, Résumé.
 3. Éditeur PDF apparaît dans le **menu Démarrer**, dans **« Ouvrir avec »** pour les fichiers PDF, et se désinstalle depuis **Paramètres › Applications**, comme n’importe quelle application.
 
@@ -118,7 +118,7 @@ Une option de l’assistant propose Éditeur PDF pour les PDF sans le rendre obl
 
 | Commande | Effet |
 |---|---|
-| `EditeurPDF-Setup-1.0.0.exe --quiet` | Installe sans fenêtre (menu Démarrer et « Ouvrir avec ») |
+| `EditeurPDF-Setup-<version>.exe --quiet` | Installe sans fenêtre (menu Démarrer et « Ouvrir avec ») |
 | `… --quiet --desktop-shortcut --launch` | Ajoute un raccourci sur le Bureau et lance l’application |
 | `… --quiet --dir D:\Apps\PDFEditor --no-association` | Autre dossier, sans association aux PDF |
 | `Uninstall.exe --uninstall --quiet [--remove-data]` | Désinstalle (et supprime les réglages) |
@@ -233,6 +233,7 @@ L’exécutable embarque trois modes sans interface durable, utilisés pour le d
 | `PDFEditor.exe --selftest rapport.txt --open doc.pdf` | Auto-test du moteur : annotations de tous types, enregistrement, pages, annuler, filigrane, mot de passe, caviardage, exports, OCR. Code de sortie = nombre d’échecs. Le document doit compter au moins 7 pages. |
 | `PDFEditor.exe --snapshot capture.png [--open doc.pdf] [--theme dark] [--size 1440x900] [--tool Pen] [--sidebar Search] [--search mot] [--zoom 1.5] [--page 3] [--no-inspector] [--delay 2500]` | Ouvre une fenêtre, la capture en PNG, puis quitte. |
 | `PDFEditor.exe --make-icon PDFEditor.ico` | Régénère l’icône (neuf résolutions). |
+| `PDFEditor.exe --fonts doc.pdf [--report polices.txt]` | Pour chaque ligne, la police déclarée par le PDF et la famille retenue pour la modifier. |
 
 Ces modes n’écrivent jamais dans vos réglages : sans `PDFEDITOR_DATA_DIR`, ils utilisent un dossier temporaire.
 
@@ -271,6 +272,7 @@ PDFEditor/
 - **Annotations en surimpression.** Tant que le document n’est pas enregistré, les annotations vivent dans un calque WPF, en points PDF orientés comme l’affichage (rotation comprise). Elles restent donc modifiables, et annuler ne touche jamais au fichier.
 - **Enregistrement.** Une copie du document reçoit les annotations sous forme de **contenu PDF standard** (tracés, texte, images), lisible par tous les lecteurs ; notes et liens deviennent de vraies annotations PDF. Les métadonnées et le chiffrement sont appliqués en dernier, puis le fichier est écrit via un fichier temporaire.
 - **Texte.** Les polices standard (Helvetica, Times, Courier) sont utilisées quand le texte tient dans l’alphabet WinAnsi ; sinon la police TrueType choisie est intégrée au document.
+- **Fidélité des polices.** Modifier une ligne relit la police déclarée par le PDF (`FPDFTextObj_GetFont`) : le nom est nettoyé de son préfixe de sous-ensemble (« ABCDEF+ »), de sa variante (« ,Bold ») et de ses suffixes (« -BoldMT »), puis comparé aux polices installées — y compris celles que Windows range sous une autre famille, comme Arial Black — avant de passer par une table d’équivalences. La graisse et l’italique portés par le nom de la famille ne sont pas réappliqués, sinon Windows choisirait une autre police.
 - **Caviardage.** Masquer ne suffit pas : la page caviardée est reconstruite à partir d’une image rendue à 220 dpi, le texte et les images d’origine disparaissent réellement du fichier.
 - **Annuler les opérations sur les pages.** Rotation, insertion, suppression, filigrane ou OCR mémorisent l’état binaire du document ; l’état « après » n’est calculé qu’au moment où l’on annule.
 - **Rendu.** Un fil dédié traite les rendus par priorité (pages visibles, détail au zoom, vignettes) ; tous les appels à PDFium passent par un verrou unique, la bibliothèque n’étant pas réentrante.
@@ -278,7 +280,7 @@ PDFEditor/
 ## Limites connues
 
 - Les **annotations déjà présentes** dans un PDF sont affichées mais ne sont pas modifiables : elles font partie du rendu de la page.
-- **Modifier le texte existant** retire la ligne d’origine et la réécrit avec une police proche : la police intégrée au PDF n’est pas réutilisée. Sur une page numérisée (texte contenu dans l’image), la ligne est masquée par un aplat de la couleur du fond.
+- **Modifier le texte existant** réécrit la ligne avec la police du document lorsqu’elle est installée sur le poste ; sinon une équivalence est choisie (Liberation Serif → Times New Roman, Computer Modern → Times New Roman…), et une police exotique reste donc approchée. Sur une page numérisée (texte contenu dans l’image), la ligne est masquée par un aplat de la couleur du fond.
 - Une page **caviardée** devient une image : son texte n’est plus sélectionnable (l’OCR peut le rétablir).
 - Les caractères **absents de la police choisie** (idéogrammes dans Arial, par exemple) s’affichent en carrés : il n’y a pas encore de police de secours.
 - Les **signatures numériques à certificat** et la **création de champs de formulaire** ne sont pas prises en charge.
