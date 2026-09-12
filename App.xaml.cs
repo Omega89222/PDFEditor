@@ -524,7 +524,7 @@ public partial class App : Application
 
         document.AddAnnotation(page, new StampAnnotation("APPROUVÉ")
         {
-            Rect = new Rect(page.Width - 215, 376, 150, 40),
+            Rect = new Rect(page.Width - 215, 560, 150, 40),
             StrokeColor = Color.FromRgb(0x1F, 0x9D, 0x55)
         }, select: false);
 
